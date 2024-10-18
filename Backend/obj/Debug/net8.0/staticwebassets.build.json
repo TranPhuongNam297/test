@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "xkK3X+CDqTCy5MeXwvLnsOMm5qTL9kFlgYXsSjtEcXc=",
+  "Source": "FaceReconigtion",
+  "BasePath": "_content/FaceReconigtion",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

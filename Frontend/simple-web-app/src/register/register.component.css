@@ -1,0 +1,47 @@
+.register-form {
+    width: 100%; /* Đảm bảo form sử dụng hết chiều rộng */
+  }
+  
+  .form-group {
+    margin-bottom: 30px; /* Khoảng cách giữa các trường */
+  }
+  
+  .form-row {
+    display: flex; /* Sử dụng Flexbox để căn chỉnh các trường */
+    justify-content: space-between; /* Đảm bảo khoảng cách đều giữa các trường */
+  }
+  
+  .form-field {
+    flex: 1; /* Các trường chiếm bằng nhau */
+    margin-right: 15px; /* Khoảng cách giữa các trường */
+  }
+  
+  .form-field:last-child {
+    margin-right: 0; /* Xóa khoảng cách bên phải cho trường cuối cùng */
+  }
+  
+  .error {
+    color: red; /* Màu chữ cho thông báo lỗi */
+  }
+  
+  .image-preview img {
+    max-width: 100%; /* Đảm bảo hình ảnh không vượt quá chiều rộng của container */
+    height: auto; /* Đảm bảo tỷ lệ hình ảnh không bị biến dạng */
+  }
+  
+  .popup {
+    /* Các kiểu cho popup nếu cần */
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 20px;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1000; /* Để hiển thị popup trên các phần tử khác */
+  }
+  
+  .popup button {
+    margin-top: 10px; /* Khoảng cách giữa thông báo và nút đóng */
+  }
+  

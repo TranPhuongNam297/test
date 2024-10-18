@@ -1,0 +1,50 @@
+<div class="register-form">
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+  
+      <div class="form-group form-row">
+        <!-- Họ -->
+        <div class="form-field">
+          <label for="lastName">Họ:</label>
+          <input id="lastName" formControlName="lastName" type="text" />
+          <div *ngIf="registerForm.get('lastName')?.invalid && registerForm.get('lastName')?.touched">
+            <span class="error">Họ là bắt buộc!</span>
+          </div>
+        </div>
+  
+        <!-- Tên -->
+        <div class="form-field">
+          <label for="firstName">Tên:</label>
+          <input id="firstName" formControlName="firstName" type="text" />
+          <div *ngIf="registerForm.get('firstName')?.invalid && registerForm.get('firstName')?.touched">
+            <span class="error">Tên là bắt buộc!</span>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Chọn hình ảnh -->
+      <div class="form-group">
+        <label for="image">Chọn hình ảnh:</label>
+        <input id="image" type="file" (change)="onFileSelected($event)" />
+        <div *ngIf="registerForm.get('image')?.invalid && registerForm.get('image')?.touched">
+          <span class="error">Hình ảnh là bắt buộc!</span>
+        </div>
+      </div>
+  
+      <!-- Hiển thị hình ảnh đã chọn -->
+      <div *ngIf="imagePreview" class="image-preview">
+        <img [src]="imagePreview" alt="Selected Image" />
+      </div>
+  
+      <!-- Nút Submit -->
+      <div class="form-group">
+        <button type="submit">Đăng ký</button>
+      </div>
+    </form>
+  
+    <!-- Popup thông báo thành công -->
+    <div *ngIf="showPopup" class="popup">
+      <p>Đăng ký thành công!</p>
+      <button (click)="closePopup()">Đóng</button>
+    </div>
+  </div>
+  
