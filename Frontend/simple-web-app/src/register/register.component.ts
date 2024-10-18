@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http'; // Import HttpClient để gửi yêu cầu
+import { HttpClient, HttpClientModule } from '@angular/common/http'; // Import HttpClient để gửi yêu cầu
 import { Observable } from 'rxjs'; // Import Observable
 
 @Component({
@@ -9,7 +9,7 @@ import { Observable } from 'rxjs'; // Import Observable
   standalone: true,
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.css'],
-  imports: [ReactiveFormsModule, CommonModule]
+  imports: [ReactiveFormsModule, CommonModule, HttpClientModule]
 })
 export class RegisterComponent {
   registerForm: FormGroup;
