@@ -1,0 +1,14 @@
+<!-- event.component.html -->
+<div *ngIf="errorMessage; else eventList">
+    <p>{{ errorMessage }}</p>
+  </div>
+  
+  <ng-template #eventList>
+    <h2>Danh sách sự kiện</h2>
+    <ul>
+      <li *ngFor="let event of events">
+        {{ event.name }} - {{ event.date }} - {{ event.location }}
+      </li>
+    </ul>
+  </ng-template>
+  
