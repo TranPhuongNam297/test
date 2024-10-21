@@ -40,14 +40,14 @@ export class FaceScanComponent implements AfterViewInit, OnDestroy {
   async loadModels() {
     try {
       // Load các model của face-api.js
-      await faceapi.nets.ssdMobilenetv1.loadFromUri('assets/ssd_mobilenetv1_model-weights_manifest.json');
-      await faceapi.nets.faceLandmark68Net.loadFromUri('assets/face_landmark_68_face_landmarks_model-weights_manifest.json');
-      await faceapi.nets.faceRecognitionNet.loadFromUri('assets/face_recognition_model-weights_manifest.json');
+      await faceapi.nets.ssdMobilenetv1.loadFromUri('assets/models/ssd_mobilenetv1_model-weights_manifest.json');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('assets/models/face_landmark_68_face_landmarks_model-weights_manifest.json');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('assets/models/face_recognition_model-weights_manifest.json');
       console.log("Models loaded successfully.");
     } catch (error) {
       console.error("Error loading models:", error);
       this.errorMessage = 'Failed to load face detection models.';
-      throw error; // Ném lỗi nếu load thất bại
+      throw error;
     }
   }
 
