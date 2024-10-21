@@ -61,8 +61,8 @@ export class CameraComponent {
   // Chuyển sang trang đăng ký
   goToRegister() {
     if (this.imageCaptured) {
-      console.log("Chuyển trang đến /register");
-      this.router.navigate(['/register']); // Điều hướng đến trang 'register'
+      console.log("Chuyển trang đến /scan");
+      this.router.navigate(['/scan']); // Điều hướng đến trang 'register'
     } else {
       console.warn("Chưa chụp hình, không thể chuyển trang!");
     }
