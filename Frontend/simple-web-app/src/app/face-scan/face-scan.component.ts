@@ -1,163 +1,126 @@
-import { Component, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import * as faceapi from 'face-api.js';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-face-scan',
   templateUrl: './face-scan.component.html',
-  styleUrls: ['./face-scan.component.css'],
   standalone: true,
-  imports: [CommonModule]
+  styleUrls: ['./face-scan.component.css'],
+  imports: [CommonModule],
 })
-export class FaceScanComponent implements AfterViewInit, OnDestroy {
-  @ViewChild('video', { static: true }) video!: HTMLVideoElement; // Thay đổi loại thành HTMLVideoElement
-  @ViewChild('canvas', { static: true }) canvas!: HTMLCanvasElement; // Thay đổi loại thành HTMLCanvasElement
-  uploadedImage: string | null = null; // Hình ảnh đã tải lên
-  capturedImage: string | null = null; // Hình ảnh từ camera
-  stream: MediaStream | null = null; // Dữ liệu luồng video
-  isMatched: boolean | null = null; // Kết quả so khớp
-  detectionInterval: any = null; // Để lưu trữ interval phát hiện khuôn mặt
-  isLoading: boolean = true; // Trạng thái để hiển thị loading
-  errorMessage: string | null = null; // Để hiển thị lỗi nếu có
+export class FaceScanComponent implements OnInit {
+  @ViewChild('video') videoRef!: ElementRef<HTMLVideoElement>;
+  @ViewChild('canvas') canvasRef!: ElementRef<HTMLCanvasElement>;
 
-  ngAfterViewInit(): void {
-    this.loadModels().then(() => {
-      this.startCamera();
-      this.isLoading = false; // Ngừng trạng thái loading sau khi load xong
-    }).catch(error => {
-      this.errorMessage = 'Error loading face detection models. Please try again later.';
-      this.isLoading = false; // Ngừng loading nếu có lỗi
-    });
-  }
+  capturedImage: string | null = null;
+  uploadedImage: string | null = null;
+  isMatched: boolean | null = null;
+  loadingModels: boolean = true; // Trạng thái tải mô hình
 
-  ngOnDestroy(): void {
-    this.stopCamera(); // Dừng camera khi component bị hủy
-    if (this.detectionInterval) {
-      clearInterval(this.detectionInterval);
-    }
+  async ngOnInit() {
+    await this.loadModels();
+    this.loadingModels = false; // Đánh dấu đã tải xong mô hình
+    this.startCamera(); // Bắt đầu camera khi đã tải xong mô hình
   }
 
   async loadModels() {
-    try {
-      // Load các model của face-api.js
-      await faceapi.nets.ssdMobilenetv1.loadFromUri('assets/models/ssd_mobilenetv1_model-weights_manifest.json');
-      await faceapi.nets.faceLandmark68Net.loadFromUri('assets/models/face_landmark_68_face_landmarks_model-weights_manifest.json');
-      await faceapi.nets.faceRecognitionNet.loadFromUri('assets/models/face_recognition_model-weights_manifest.json');
-      console.log("Models loaded successfully.");
-    } catch (error) {
-      console.error("Error loading models:", error);
-      this.errorMessage = 'Failed to load face detection models.';
-      throw error;
-    }
+    // Tải các mô hình nhận diện khuôn mặt từ face-api.js
+    await faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models/');
+    await faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models/');
+    await faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models/');
+    console.log("Models loaded successfully.");
   }
 
   startCamera() {
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      .then((stream: MediaStream) => {
-        this.stream = stream;
-        this.video.srcObject = stream; // Thiết lập luồng video
-        this.video.play();
-        this.detectFace(); // Bắt đầu nhận diện khuôn mặt
+    const video = this.videoRef.nativeElement;
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        video.play();
+        this.detectFace(); // Bắt đầu quét khuôn mặt khi camera đã khởi động
       })
-      .catch(err => {
-        console.error("Error accessing camera:", err);
-        this.errorMessage = 'Unable to access the camera. Please check your permissions.';
-      });
+      .catch(err => console.error("Error accessing camera:", err));
   }
 
-  stopCamera() {
-    if (this.stream) {
-      this.stream.getTracks().forEach(track => track.stop());
-      this.stream = null;
-    }
-  }
-
-  async detectFace() {
-    const videoElement = this.video;
-
-    this.detectionInterval = setInterval(async () => {
-      if (!videoElement || videoElement.readyState !== 4) {
-        console.warn("Video is not ready for detection.");
-        return;
-      }
-
-      const detection = await faceapi.detectSingleFace(videoElement, new faceapi.SsdMobilenetv1Options())
-        .withFaceLandmarks()
-        .withFaceDescriptor();
-
-      if (detection) {
-        console.log("Face detected!");
-        this.captureImage(); // Tự động chụp ảnh khi phát hiện khuôn mặt
-        clearInterval(this.detectionInterval); // Dừng phát hiện khi đã chụp ảnh
-      } else {
-        console.log("No face detected.");
-      }
-    }, 100); // Giảm thời gian phát hiện xuống để cải thiện độ chính xác
+  detectFace() {
+    const video = this.videoRef.nativeElement;
+    video.addEventListener('play', () => {
+      const canvas = this.canvasRef.nativeElement;
+      const displaySize = { width: video.width, height: video.height };
+      faceapi.matchDimensions(canvas, displaySize);
+      const interval = setInterval(async () => {
+        if (!this.loadingModels) { // Chỉ phát hiện khuôn mặt nếu mô hình đã tải xong
+          const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptors();
+          if (detections.length > 0) {
+            clearInterval(interval);
+            this.captureImage();
+            this.stopCamera();
+          }
+        }
+      }, 1000);
+    });
   }
 
   captureImage() {
-    const videoWidth = this.video.videoWidth;
-    const videoHeight = this.video.videoHeight;
+    const canvas = this.canvasRef.nativeElement;
+    const video = this.videoRef.nativeElement;
+    const context = canvas.getContext('2d');
 
-    this.canvas.width = videoWidth;
-    this.canvas.height = videoHeight;
-
-    const context = this.canvas.getContext('2d');
     if (context) {
-      context.drawImage(this.video, 0, 0, videoWidth, videoHeight);
-      this.capturedImage = this.canvas.toDataURL('image/png'); // Lưu hình ảnh đã chụp
-
-      console.log("Image captured from camera.");
-      this.compareImages(); // Tự động so sánh khuôn mặt sau khi chụp
-    } else {
-      console.error("Failed to get canvas context.");
+      context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+      this.capturedImage = canvas.toDataURL('image/png');
+      console.log("Captured image from camera.");
     }
   }
+
+  stopCamera() {
+    const video = this.videoRef.nativeElement;
+    const stream = video.srcObject as MediaStream;
+  
+    if (stream) {
+      // Kiểm tra nếu stream tồn tại, dừng các track của nó
+      stream.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    } else {
+      console.warn("Camera is already stopped or not started.");
+    }
+  }
+  
 
   uploadImage(event: any) {
     const file = event.target.files[0];
-    if (!file) {
-      console.warn("No file selected.");
-      return;
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.uploadedImage = reader.result as string;
+        this.autoCompareImages(); // Tự động so sánh khi ảnh đã tải lên
+      };
+      reader.readAsDataURL(file);
     }
-    
-    const reader = new FileReader();
-    reader.onload = (e: any) => {
-      this.uploadedImage = e.target.result; // Hình ảnh đã tải lên
-      console.log("Image uploaded:", this.uploadedImage);
-      this.compareImages(); // Tự động so sánh sau khi ảnh được tải lên
-    };
-    reader.readAsDataURL(file);
   }
 
-  async compareImages() {
-    if (!this.uploadedImage || !this.capturedImage) {
+  async autoCompareImages() {
+    if (!this.capturedImage || !this.uploadedImage) {
       console.error("Uploaded or captured image is missing.");
-      this.isMatched = false;
       return;
     }
 
-    try {
-      console.log("Comparing faces...");
-      const img1 = await faceapi.fetchImage(this.uploadedImage);
-      const img2 = await faceapi.fetchImage(this.capturedImage);
+    const img1 = await faceapi.fetchImage(this.capturedImage);
+    const img2 = await faceapi.fetchImage(this.uploadedImage);
 
-      const fullFaceDescription1 = await faceapi.detectSingleFace(img1).withFaceLandmarks().withFaceDescriptor();
-      const fullFaceDescription2 = await faceapi.detectSingleFace(img2).withFaceLandmarks().withFaceDescriptor();
+    const fullFaceDescription1 = await faceapi.detectSingleFace(img1).withFaceLandmarks().withFaceDescriptor();
+    const fullFaceDescription2 = await faceapi.detectSingleFace(img2).withFaceLandmarks().withFaceDescriptor();
 
-      if (fullFaceDescription1 && fullFaceDescription2) {
-        const distance = faceapi.euclideanDistance(
-          fullFaceDescription1.descriptor, fullFaceDescription2.descriptor
-        );
-        const threshold = 0.4; // Điều chỉnh ngưỡng so sánh chặt hơn
-        this.isMatched = distance < threshold;
-        console.log('Faces Matched:', this.isMatched, 'Distance:', distance);
-      } else {
-        console.error("One or both faces could not be detected.");
-        this.isMatched = false;
-      }
-    } catch (error) {
-      console.error("Error comparing images:", error);
+    if (fullFaceDescription1 && fullFaceDescription2) {
+      const distance = faceapi.euclideanDistance(
+        fullFaceDescription1.descriptor, fullFaceDescription2.descriptor
+      );
+      const threshold = 0.4;
+      this.isMatched = distance < threshold;
+      console.log('Faces Matched:', this.isMatched, 'Distance:', distance);
+    } else {
+      console.error("One or both faces could not be detected.");
       this.isMatched = false;
     }
   }

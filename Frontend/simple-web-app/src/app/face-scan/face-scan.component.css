@@ -1,5 +1,5 @@
-video {
+video, canvas {
     width: 300px;
-    height: auto;
+    height: 300px;
+    border: 1px solid black;
   }
-  
