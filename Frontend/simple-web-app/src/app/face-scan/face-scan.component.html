@@ -1,6 +1,6 @@
-<!-- face-compare.component.html -->
 <div style="text-align: center; margin: 20px;">
-    <video #video width="720" height="560" autoplay muted></video>
+    <!-- Video camera chỉ hiển thị nếu isCameraActive là true -->
+    <video #video *ngIf="isCameraActive" width="720" height="560" autoplay muted></video>
     <canvas #canvas style="display: none;"></canvas>
 
     <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
@@ -30,6 +30,6 @@
 
     <!-- Tự động hiển thị kết quả sau khi so sánh -->
     <p *ngIf="isMatched !== null" [ngStyle]="{'color': isMatched ? 'green' : 'red'}" style="font-weight: bold; font-size: 20px; margin-top: 20px;">
-        {{ isMatched ? 'Faces Matched!' : 'Faces do not match.' }}
+        {{ isMatched ? 'Gương mặt trùng khớp!' : 'Gương mặt không trùng khớp' }}
     </p>
 </div>

@@ -17,6 +17,7 @@ export class FaceScanComponent implements OnInit {
   uploadedImage: string | null = null;
   isMatched: boolean | null = null;
   loadingModels: boolean = true; // Trạng thái tải mô hình
+  isCameraActive: boolean = true; // Trạng thái hiển thị camera
 
   async ngOnInit() {
     await this.loadModels();
@@ -29,7 +30,7 @@ export class FaceScanComponent implements OnInit {
     await faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models/');
     await faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models/');
     await faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models/');
-    console.log("Models loaded successfully.");
+    console.log('Models loaded successfully.');
   }
 
   startCamera() {
@@ -40,7 +41,7 @@ export class FaceScanComponent implements OnInit {
         video.play();
         this.detectFace(); // Bắt đầu quét khuôn mặt khi camera đã khởi động
       })
-      .catch(err => console.error("Error accessing camera:", err));
+      .catch(err => console.error('Error accessing camera:', err));
   }
 
   detectFace() {
@@ -67,26 +68,29 @@ export class FaceScanComponent implements OnInit {
     const video = this.videoRef.nativeElement;
     const context = canvas.getContext('2d');
 
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
     if (context) {
       context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
       this.capturedImage = canvas.toDataURL('image/png');
-      console.log("Captured image from camera.");
+      console.log('Captured image from camera.');
     }
   }
 
   stopCamera() {
     const video = this.videoRef.nativeElement;
     const stream = video.srcObject as MediaStream;
-  
+
     if (stream) {
       // Kiểm tra nếu stream tồn tại, dừng các track của nó
       stream.getTracks().forEach(track => track.stop());
       video.srcObject = null;
+      this.isCameraActive = false; // Ẩn camera sau khi chụp hình
     } else {
-      console.warn("Camera is already stopped or not started.");
+      console.warn('Camera is already stopped or not started.');
     }
   }
-  
 
   uploadImage(event: any) {
     const file = event.target.files[0];
@@ -102,7 +106,7 @@ export class FaceScanComponent implements OnInit {
 
   async autoCompareImages() {
     if (!this.capturedImage || !this.uploadedImage) {
-      console.error("Uploaded or captured image is missing.");
+      console.error('Uploaded or captured image is missing.');
       return;
     }
 
@@ -116,11 +120,11 @@ export class FaceScanComponent implements OnInit {
       const distance = faceapi.euclideanDistance(
         fullFaceDescription1.descriptor, fullFaceDescription2.descriptor
       );
-      const threshold = 0.4;
+      const threshold = 0.6;
       this.isMatched = distance < threshold;
       console.log('Faces Matched:', this.isMatched, 'Distance:', distance);
     } else {
-      console.error("One or both faces could not be detected.");
+      console.error('One or both faces could not be detected.');
       this.isMatched = false;
     }
   }
