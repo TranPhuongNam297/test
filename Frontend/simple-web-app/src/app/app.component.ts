@@ -1,11 +1,14 @@
+// src/app/app.component.ts
 import { Component } from '@angular/core';
-import { RegisterComponent } from '../register/register.component';
-import { EventComponent } from "../event-component/event-component.component";
+import { RouterModule } from '@angular/router'; // Import RouterModule
 
 @Component({
-  selector: 'app-root', // Selector của AppComponent
-  standalone: true,
+  selector: 'app-root',
   templateUrl: './app.component.html',
-  imports: [EventComponent, RegisterComponent] // Import cả EventComponent và RegisterComponent
+  styleUrls: ['./app.component.css'],
+  standalone: true, // Nếu bạn đang sử dụng component standalone
+  imports: [RouterModule], // Thêm RouterModule vào imports
 })
-export class AppComponent {}
+export class AppComponent {
+  title = 'your-app-title'; // Đặt tiêu đề hoặc các thuộc tính khác nếu cần
+}

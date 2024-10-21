@@ -1,0 +1,20 @@
+.camera-container {
+  text-align: center;
+  margin-top: 20px;
+}
+
+video, canvas {
+  width: 640px;
+  height: 480px;
+  border: 1px solid black;
+}
+
+.buttons {
+  margin-top: 10px;
+}
+
+button {
+  margin: 5px;
+  padding: 10px;
+  font-size: 16px;
+}
