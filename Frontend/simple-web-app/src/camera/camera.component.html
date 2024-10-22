@@ -1,10 +1,9 @@
 <div class="camera-container">
   <video #video autoplay></video>
-  <canvas #canvas hidden></canvas>
-  <div class="buttons">
-    <button (click)="startCamera()">Mở Camera</button>
-    <button (click)="stopCamera()">Tắt Camera</button>
-    <button (click)="captureImage()">Chụp Hình</button>
-    <button *ngIf="imageCaptured" (click)="goToRegister()">Tiếp tục</button>
-  </div>
+  <canvas #canvas style="display: none;"></canvas>
+
+  <!-- Nút bật/tắt camera -->
+  <button (click)="toggleCamera()">
+    {{ stream ? 'Quét gương mặt' : 'Ngừng quét' }}
+  </button>
 </div>
