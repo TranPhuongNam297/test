@@ -67,16 +67,24 @@ export class FaceScanComponent implements OnInit {
     const canvas = this.canvasRef.nativeElement;
     const video = this.videoRef.nativeElement;
     const context = canvas.getContext('2d');
-
+  
+    if (!video.videoWidth || !video.videoHeight) {
+      console.error('Video dimensions not available yet.');
+      return;
+    }
+  
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-
+  
     if (context) {
       context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
       this.capturedImage = canvas.toDataURL('image/png');
-      console.log('Captured image from camera.');
+      console.log('Captured image:', this.capturedImage);
+    } else {
+      console.error('Canvas context not available.');
     }
   }
+  
 
   stopCamera() {
     const video = this.videoRef.nativeElement;
@@ -120,7 +128,7 @@ export class FaceScanComponent implements OnInit {
       const distance = faceapi.euclideanDistance(
         fullFaceDescription1.descriptor, fullFaceDescription2.descriptor
       );
-      const threshold = 0.6;
+      const threshold = 0.4;
       this.isMatched = distance < threshold;
       console.log('Faces Matched:', this.isMatched, 'Distance:', distance);
     } else {

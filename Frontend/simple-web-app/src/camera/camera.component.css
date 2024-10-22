@@ -1,6 +1,9 @@
 .camera-container {
-  text-align: center;
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 75vh; /* Chiều cao của trang để căn giữa theo chiều dọc */
 }
 
 video, canvas {
@@ -9,12 +12,17 @@ video, canvas {
   border: 1px solid black;
 }
 
-.buttons {
-  margin-top: 10px;
+button {
+  margin-top: 20px; 
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #4CAF50; 
+  color: white; 
+  border: none; 
+  border-radius: 5px; 
+  cursor: pointer;
 }
 
-button {
-  margin: 5px;
-  padding: 10px;
-  font-size: 16px;
+button:hover {
+  background-color: #45a049; 
 }

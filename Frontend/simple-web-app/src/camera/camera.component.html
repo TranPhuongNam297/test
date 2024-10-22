@@ -1,9 +1,10 @@
+<h1 style="text-align: center;">Quét gương mặt mẫu</h1>
 <div class="camera-container">
   <video #video autoplay></video>
   <canvas #canvas style="display: none;"></canvas>
 
   <!-- Nút bật/tắt camera -->
   <button (click)="toggleCamera()">
-    {{ stream ? 'Quét gương mặt' : 'Ngừng quét' }}
+    {{ stream ? 'Ngừng quét' : 'Quét gương mặt' }}
   </button>
 </div>
