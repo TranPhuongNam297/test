@@ -1,42 +1,56 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import * as faceapi from 'face-api.js';
 import { CommonModule } from '@angular/common';
+import { HttpClientModule } from '@angular/common/http';
+
+interface ApiResponse {
+  FIRSTNAME?: string;
+  LASTNAME?: string;
+}
 
 @Component({
   selector: 'app-face-scan',
   templateUrl: './face-scan.component.html',
   styleUrls: ['./face-scan.component.css'],
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, HttpClientModule],
 })
-export class FaceScanComponent implements OnInit {
+export class FaceScanComponent implements OnInit, OnDestroy {
   @ViewChild('video') videoElement!: ElementRef;
   uploadedImage: string | null = null;
   isMatched: boolean | null = null;
   userName: string | null = null;
   scanInterval: any;
-  stream: MediaStream | null = null; // Biến để lưu trữ luồng camera
+  stream: MediaStream | null = null;
 
   constructor(private http: HttpClient) {}
 
   async ngOnInit() {
-    await faceapi.nets.tinyFaceDetector.loadFromUri('/assets/models');
-    await faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models');
-    await faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models');
-    await faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models');
-
-    // Mở camera để bắt đầu quét gương mặt
+    await this.loadFaceApiModels();
     this.startCamera();
+  }
+
+  async loadFaceApiModels() {
+    try {
+      await Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri('/assets/models'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models'),
+        faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models'),
+      ]);
+    } catch (error) {
+      console.error('Error loading face-api.js models', error);
+    }
   }
 
   startCamera() {
     navigator.mediaDevices
       .getUserMedia({ video: {} })
       .then((stream) => {
-        this.stream = stream;  // Lưu trữ luồng camera
+        this.stream = stream;
         this.videoElement.nativeElement.srcObject = stream;
-        this.startFaceDetection();  // Bắt đầu quét gương mặt
+        this.startFaceDetection();
       })
       .catch((err) => console.error('Error accessing camera: ', err));
   }
@@ -44,60 +58,60 @@ export class FaceScanComponent implements OnInit {
   startFaceDetection() {
     this.scanInterval = setInterval(async () => {
       const video = this.videoElement.nativeElement;
-
-      // Quét gương mặt mỗi 1 giây
-      const detections = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+      const detections = await faceapi.detectSingleFace(video)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
       if (detections) {
-        clearInterval(this.scanInterval);  // Dừng quét gương mặt
-        this.captureImage();  // Chụp ảnh và hiển thị
+        clearInterval(this.scanInterval);
+        this.captureImage();
       } else {
         console.log('No face detected, retrying...');
       }
-    }, 1000);  // Mỗi giây quét một lần
+    }, 1000);
   }
 
   async captureImage() {
     const video = this.videoElement.nativeElement;
-
-    // Chụp một frame từ video và chuyển thành canvas
     const canvas = faceapi.createCanvasFromMedia(video);
+
+    if (!canvas) {
+      console.error('Failed to create canvas from video');
+      return;
+    }
+
     const context = canvas.getContext('2d');
     if (context) {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
 
-    // Hiển thị ảnh đã chụp lên màn hình
-    this.uploadedImage = canvas.toDataURL('image/png');  // Lưu URL của ảnh đã chụp
-
-    // Dừng camera sau khi chụp ảnh
+    this.uploadedImage = canvas.toDataURL('image/png');
     this.stopCamera();
 
-    // Chuyển canvas thành file ảnh và gửi tới API để so sánh
     const imageBlob = await this.canvasToBlob(canvas);
     this.sendImageToAPI(imageBlob);
   }
 
-  // Hàm chuyển canvas thành blob
   canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
     return new Promise((resolve) => {
       canvas.toBlob((blob) => {
         if (blob) {
           resolve(blob);
+        } else {
+          console.error('Failed to convert canvas to blob');
+          resolve(new Blob()); // Return an empty blob if conversion fails
         }
       });
     });
   }
 
-  // Gửi ảnh đến API để so sánh
   sendImageToAPI(file: Blob) {
     const apiUrl = 'http://127.0.0.1:8000/uploadfile/';
-
     const formData = new FormData();
     formData.append('file', file);
 
-    this.http.post(apiUrl, formData).subscribe({
-      next: (response: any) => {
+    this.http.post<ApiResponse>(apiUrl, formData).subscribe({
+      next: (response) => {
         if (response.FIRSTNAME && response.LASTNAME) {
           this.isMatched = true;
           this.userName = `${response.FIRSTNAME} ${response.LASTNAME}`;
@@ -114,19 +128,22 @@ export class FaceScanComponent implements OnInit {
     });
   }
 
-  // Hàm dừng camera sau khi chụp ảnh
   stopCamera() {
     if (this.stream) {
       const tracks = this.stream.getTracks();
-      tracks.forEach((track) => track.stop());  // Dừng tất cả các track video/audio
-      this.stream = null;  // Xóa luồng camera
+      tracks.forEach((track) => track.stop());
+      this.stream = null;
     }
   }
 
-  // Nếu cần dừng quá trình quét thủ công
   stopFaceDetection() {
     if (this.scanInterval) {
       clearInterval(this.scanInterval);
     }
+  }
+
+  ngOnDestroy() {
+    this.stopCamera();
+    this.stopFaceDetection();
   }
 }
