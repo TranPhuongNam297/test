@@ -1,126 +1,153 @@
-import { Component, ViewChild, OnInit } from '@angular/core';
+import { Component, ViewChild, OnInit, ElementRef } from '@angular/core';
 import { Router } from '@angular/router';
 import * as faceapi from 'face-api.js';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { HttpClientModule } from '@angular/common/http';
 
 @Component({
   selector: 'app-camera',
   standalone: true,
   templateUrl: './camera.component.html',
   styleUrls: ['./camera.component.css'],
-  imports: [CommonModule, RouterModule]
+  imports: [CommonModule, RouterModule, FormsModule, HttpClientModule],
 })
 export class CameraComponent implements OnInit {
-  @ViewChild('video', { static: true }) video!: HTMLVideoElement;
-  @ViewChild('canvas', { static: true }) canvas!: HTMLCanvasElement;
+  @ViewChild('video', { static: true }) videoRef!: ElementRef<HTMLVideoElement>;
+  @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
   public stream: MediaStream | null = null;
-  imageCaptured: boolean = false;
-  isFaceDetected: boolean = false;
+  public imageCaptured: boolean = false;
+  public isFaceDetected: boolean = false;
+  public capturedImageData: string | null = null;
+  private faceDetectionInProgress: boolean = false;
+  private scanInterval: any;
 
   constructor(private router: Router) {}
 
   async ngOnInit() {
-    // Chỉ tải mô hình khi đang trong môi trường trình duyệt
-    if (typeof window !== 'undefined') {
+    if (this.isBrowser()) {
       await this.loadFaceApiModels();
-    } else {
-      //console.error('Môi trường không hỗ trợ face-api.js');
+      this.startCamera();
     }
   }
 
-  // Tải các mô hình của face-api.js
+  isBrowser() {
+    return typeof window !== 'undefined';
+  }
+
   async loadFaceApiModels() {
     try {
-      await faceapi.nets.tinyFaceDetector.loadFromUri('/assets/models');
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models'),
+      ]);
       console.log('Face API models loaded.');
     } catch (error) {
       console.error('Error loading face-api models: ', error);
     }
   }
 
-  // Hàm bật/tắt camera dựa trên trạng thái hiện tại
   toggleCamera() {
     this.stream ? this.stopCamera() : this.startCamera();
   }
 
-  // Bật camera
   startCamera() {
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream: MediaStream) => {
         this.stream = stream;
-        this.video.srcObject = stream;
-        this.video.play(); // Chơi video
-        this.imageCaptured = false; // Reset imageCaptured khi bật camera
-        this.detectFace(); // Bắt đầu phát hiện khuôn mặt khi camera hoạt động
+        const videoElement = this.videoRef.nativeElement;
+        videoElement.srcObject = stream;
+        videoElement.play();
+        console.log("Camera started, video stream assigned.");
+        this.detectFace();
       })
-      .catch((err) => console.error("Error accessing camera: ", err));
+      .catch((err) => {
+        console.error("Error accessing camera: ", err);
+      });
   }
 
-  // Tắt camera
   stopCamera() {
     if (this.stream) {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null;
     }
+    this.stopFaceDetection();
   }
 
-  // Phát hiện khuôn mặt từ video
   detectFace() {
-    const video = this.video;
+    const video = this.videoRef.nativeElement;
 
-    const detect = async () => {
-      if (!this.imageCaptured) { // Chỉ phát hiện khuôn mặt nếu chưa chụp ảnh
-        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
-        if (detections.length > 0) {
-          this.isFaceDetected = true;
-          this.captureImage(); // Tự động chụp hình
-        } else {
-          this.isFaceDetected = false; // Không phát hiện khuôn mặt
-        }
+    this.scanInterval = setInterval(async () => {
+      console.log("Detecting face...");
+      const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options());
+
+      if (detections.length > 0 && !this.imageCaptured && !this.faceDetectionInProgress) {
+        console.log("Face detected!");
+        this.isFaceDetected = true;
+        this.faceDetectionInProgress = true;
+        this.captureImage(detections);
+      } else {
+        this.isFaceDetected = false;
       }
-      requestAnimationFrame(detect); // Gọi lại hàm detect
-    };
-
-    detect(); // Khởi động phát hiện
+    }, 1000);
   }
 
-  // Chụp hình và lưu vào máy
-  captureImage() {
-    const videoWidth = this.video.videoWidth;
-    const videoHeight = this.video.videoHeight;
+  captureImage(detections: any[]) {
+    const videoWidth = this.videoRef.nativeElement.videoWidth;
+    const videoHeight = this.videoRef.nativeElement.videoHeight;
+    const canvas = this.canvasRef.nativeElement;
 
-    // Đặt lại kích thước của canvas dựa trên videoWidth và videoHeight
-    this.canvas.width = videoWidth;
-    this.canvas.height = videoHeight;
+    canvas.width = videoWidth;
+    canvas.height = videoHeight;
 
-    const context = this.canvas.getContext('2d');
+    const context = canvas.getContext('2d');
     if (context) {
-      context.drawImage(this.video, 0, 0, videoWidth, videoHeight);
-
-      // Chuyển canvas thành ảnh và tạo link để tải về
-      const imageData = this.canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = imageData;
-      a.download = 'captured_image.png';
-      a.click();
-
+      context.drawImage(this.videoRef.nativeElement, 0, 0, videoWidth, videoHeight);
+      this.capturedImageData = canvas.toDataURL('image/png');
       this.imageCaptured = true;
-
-      // Thêm thời gian chờ nhỏ để đảm bảo ảnh đã được lưu trước khi chuyển trang
-      setTimeout(() => {
-        this.goToRegister(); // Tự động chuyển trang sau khi chụp xong
-      }, 1000); // Thời gian chờ 1 giây để đảm bảo tải ảnh xong
+      console.log('Image captured:', this.capturedImageData);
+      this.stopCamera(); // Stop camera after capturing the image
+      clearInterval(this.scanInterval); // Stop face detection interval
     }
   }
 
-  // Chuyển sang trang scan
-  goToRegister() {
-    if (this.imageCaptured) {
-      console.log("Chuyển trang đến /scan");
-      this.router.navigate(['/scan']); // Điều hướng đến trang 'scan'
-    } else {
-      console.warn("Chưa chụp hình, không thể chuyển trang!");
+  submitData(firstName: string, lastName: string) {
+    if (this.capturedImageData) {
+      const data = {
+        image: this.capturedImageData,
+        firstName: firstName,
+        lastName: lastName,
+      };
+
+      fetch('https://localhost:44320/api/CRUD', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      .then(response => {
+        if (response.ok) {
+          console.log('Data submitted successfully');
+          this.router.navigate(['/scan']);
+        } else {
+          console.error('Error submitting data');
+        }
+      })
+      .catch(err => console.error('Fetch error: ', err));
     }
+  }
+
+  stopFaceDetection() {
+    if (this.scanInterval) {
+      clearInterval(this.scanInterval);
+      this.scanInterval = null;
+      this.faceDetectionInProgress = false;
+    }
+  }
+
+  ngOnDestroy() {
+    this.stopCamera();
+    this.stopFaceDetection();
   }
 }

@@ -1,10 +1,31 @@
-<h1 style="text-align: center;">Quét gương mặt mẫu</h1>
+<!-- camera.component.html -->
 <div class="camera-container">
   <video #video autoplay></video>
   <canvas #canvas style="display: none;"></canvas>
 
-  <!-- Nút bật/tắt camera -->
-  <button (click)="toggleCamera()">
-    {{ stream ? 'Ngừng quét' : 'Quét gương mặt' }}
-  </button>
+  <div class="controls">
+    <button (click)="toggleCamera()">
+      {{ stream ? 'Stop Camera' : 'Start Camera' }}
+    </button>
+    <div *ngIf="isFaceDetected" class="face-detected">
+      <p>Face Detected!</p>
+    </div>
+    <div *ngIf="imageCaptured" class="image-preview">
+      <h3>Captured Image:</h3>
+      <img [src]="capturedImageData" alt="Captured Image" />
+    </div>
+  </div>
+
+  <div *ngIf="imageCaptured" class="form-container">
+    <h3>Submit Your Data</h3>
+    <form (ngSubmit)="submitData(firstName.value, lastName.value)">
+      <label for="firstName">First Name:</label>
+      <input type="text" id="firstName" #firstName required />
+
+      <label for="lastName">Last Name:</label>
+      <input type="text" id="lastName" #lastName required />
+
+      <button type="submit">Submit</button>
+    </form>
+  </div>
 </div>
