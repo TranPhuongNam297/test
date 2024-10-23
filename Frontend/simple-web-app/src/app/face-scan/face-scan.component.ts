@@ -99,92 +99,23 @@ export class FaceScanComponent implements OnInit, OnDestroy {
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
 
-    // Lấy dữ liệu hình ảnh từ canvas với định dạng RGBA
-    const imageData = context?.getImageData(0, 0, canvas.width, canvas.height);
-    if (!imageData) {
-      console.error('Failed to get image data from canvas');
-      return;
-    }
-
-    // Chuyển đổi từ RGBA sang RGB (bỏ đi kênh alpha)
-    const rgbData = this.convertToRGB(imageData);
-
-    // Lưu ảnh RGB (không kênh alpha)
-    this.uploadedImage = this.createImageFromRGB(rgbData, canvas.width, canvas.height);
-
+    // Chuyển đổi canvas thành base64
+    this.uploadedImage = canvas.toDataURL('image/png');
     this.stopCamera();
 
-    // Tạo blob từ dữ liệu RGB và gửi tới API
-    const imageBlob = await this.canvasToBlob(rgbData, canvas.width, canvas.height);
-    this.sendImageToAPI(imageBlob);
+    // Gửi base64 đến API
+    this.sendImageToAPI(this.uploadedImage);
   }
 
-  convertToRGB(imageData: ImageData): Uint8ClampedArray {
-    const { data, width, height } = imageData;
-    const rgbData = new Uint8ClampedArray(width * height * 3); // Mỗi pixel chỉ 3 kênh RGB
+  sendImageToAPI(base64Image: string) {
+    const apiUrl = 'http://127.0.0.1:8000/upload-face/';
+    
+    // Tạo đối tượng JSON chứa chuỗi base64
+    const data = {
+      image: base64Image
+    };
 
-    for (let i = 0, j = 0; i < data.length; i += 4, j += 3) {
-      rgbData[j] = data[i];     // Red
-      rgbData[j + 1] = data[i + 1]; // Green
-      rgbData[j + 2] = data[i + 2]; // Blue
-      // Bỏ qua kênh alpha (data[i + 3])
-    }
-
-    return rgbData;
-  }
-
-  createImageFromRGB(rgbData: Uint8ClampedArray, width: number, height: number): string {
-    const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
-    const context = canvas.getContext('2d');
-    if (!context) {
-      console.error('Failed to create canvas context');
-      return '';
-    }
-
-    // Tạo ImageData từ RGB
-    const imageData = new ImageData(new Uint8ClampedArray(rgbData), width, height);
-    context.putImageData(imageData, 0, 0);
-
-    // Trả về hình ảnh dưới dạng URL
-    return canvas.toDataURL('image/png');
-  }
-
-  canvasToBlob(rgbData: Uint8ClampedArray, width: number, height: number): Promise<Blob> {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = width;
-      canvas.height = height;
-      const context = canvas.getContext('2d');
-      if (!context) {
-        console.error('Failed to create canvas context');
-        resolve(new Blob()); // Return an empty blob if conversion fails
-        return;
-      }
-
-      // Tạo lại ImageData từ dữ liệu RGB và đặt vào canvas
-      const imageData = new ImageData(new Uint8ClampedArray(rgbData), width, height);
-      context.putImageData(imageData, 0, 0);
-
-      // Chuyển canvas thành Blob
-      canvas.toBlob((blob) => {
-        if (blob) {
-          resolve(blob);
-        } else {
-          console.error('Failed to convert canvas to blob');
-          resolve(new Blob()); // Return an empty blob if conversion fails
-        }
-      }, 'image/png');
-    });
-  }
-
-  sendImageToAPI(file: Blob) {
-    const apiUrl = 'http://127.0.0.1:8000/uploadfile/';
-    const formData = new FormData();
-    formData.append('file', file);
-
-    this.http.post<ApiResponse>(apiUrl, formData).subscribe({
+    this.http.post<ApiResponse>(apiUrl, data).subscribe({
       next: (response) => {
         if (response.FIRSTNAME && response.LASTNAME) {
           this.isMatched = true;
