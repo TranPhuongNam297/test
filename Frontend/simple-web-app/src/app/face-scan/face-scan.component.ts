@@ -1,139 +1,58 @@
-import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
-import * as faceapi from 'face-api.js';
+import { Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-
+import { HttpClientModule } from '@angular/common/http';
 @Component({
   selector: 'app-face-scan',
   templateUrl: './face-scan.component.html',
-  standalone: true,
   styleUrls: ['./face-scan.component.css'],
-  imports: [CommonModule],
+  standalone: true,  // Đảm bảo thuộc tính này có mặt
+  imports: [CommonModule, HttpClientModule],
 })
-export class FaceScanComponent implements OnInit {
-  @ViewChild('video') videoRef!: ElementRef<HTMLVideoElement>;
-  @ViewChild('canvas') canvasRef!: ElementRef<HTMLCanvasElement>;
+export class FaceScanComponent {
+  uploadedImage: string | null = null;  // Để hiển thị ảnh đã upload
+  isMatched: boolean | null = null;  // Trạng thái so khớp
+  userName: string | null = null;  // Lưu tên người dùng được nhận diện
 
-  capturedImage: string | null = null;
-  uploadedImage: string | null = null;
-  isMatched: boolean | null = null;
-  loadingModels: boolean = true; // Trạng thái tải mô hình
-  isCameraActive: boolean = true; // Trạng thái hiển thị camera
+  constructor(private http: HttpClient) {}
 
-  async ngOnInit() {
-    await this.loadModels();
-    this.loadingModels = false; // Đánh dấu đã tải xong mô hình
-    this.startCamera(); // Bắt đầu camera khi đã tải xong mô hình
-  }
-
-  async loadModels() {
-    // Tải các mô hình nhận diện khuôn mặt từ face-api.js
-    await faceapi.nets.ssdMobilenetv1.loadFromUri('/assets/models/');
-    await faceapi.nets.faceLandmark68Net.loadFromUri('/assets/models/');
-    await faceapi.nets.faceRecognitionNet.loadFromUri('/assets/models/');
-    console.log('Models loaded successfully.');
-  }
-
-  startCamera() {
-    const video = this.videoRef.nativeElement;
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-        video.play();
-        this.detectFace(); // Bắt đầu quét khuôn mặt khi camera đã khởi động
-      })
-      .catch(err => console.error('Error accessing camera:', err));
-  }
-
-  detectFace() {
-    const video = this.videoRef.nativeElement;
-    video.addEventListener('play', () => {
-      const canvas = this.canvasRef.nativeElement;
-      const displaySize = { width: video.width, height: video.height };
-      faceapi.matchDimensions(canvas, displaySize);
-      const interval = setInterval(async () => {
-        if (!this.loadingModels) { // Chỉ phát hiện khuôn mặt nếu mô hình đã tải xong
-          const detections = await faceapi.detectAllFaces(video, new faceapi.SsdMobilenetv1Options()).withFaceLandmarks().withFaceDescriptors();
-          if (detections.length > 0) {
-            clearInterval(interval);
-            this.captureImage();
-            this.stopCamera();
-          }
-        }
-      }, 1000);
-    });
-  }
-
-  captureImage() {
-    const canvas = this.canvasRef.nativeElement;
-    const video = this.videoRef.nativeElement;
-    const context = canvas.getContext('2d');
-  
-    if (!video.videoWidth || !video.videoHeight) {
-      console.error('Video dimensions not available yet.');
-      return;
-    }
-  
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-  
-    if (context) {
-      context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-      this.capturedImage = canvas.toDataURL('image/png');
-      console.log('Captured image:', this.capturedImage);
-    } else {
-      console.error('Canvas context not available.');
-    }
-  }
-  
-
-  stopCamera() {
-    const video = this.videoRef.nativeElement;
-    const stream = video.srcObject as MediaStream;
-
-    if (stream) {
-      // Kiểm tra nếu stream tồn tại, dừng các track của nó
-      stream.getTracks().forEach(track => track.stop());
-      video.srcObject = null;
-      this.isCameraActive = false; // Ẩn camera sau khi chụp hình
-    } else {
-      console.warn('Camera is already stopped or not started.');
-    }
-  }
-
-  uploadImage(event: any) {
+  // Hàm xử lý khi người dùng chọn ảnh
+  onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
+      
       reader.onload = () => {
         this.uploadedImage = reader.result as string;
-        this.autoCompareImages(); // Tự động so sánh khi ảnh đã tải lên
+        this.sendImageToAPI(file);  // Gửi file đến API sau khi ảnh đã được chọn
       };
-      reader.readAsDataURL(file);
+      
+      reader.readAsDataURL(file);  // Hiển thị ảnh trong giao diện
     }
   }
 
-  async autoCompareImages() {
-    if (!this.capturedImage || !this.uploadedImage) {
-      console.error('Uploaded or captured image is missing.');
-      return;
-    }
+  // Hàm gửi ảnh tới API để nhận diện
+  sendImageToAPI(file: File) {
+    const apiUrl = 'http://127.0.0.1:8000/uploadfile/';  // Đường dẫn API của bạn
 
-    const img1 = await faceapi.fetchImage(this.capturedImage);
-    const img2 = await faceapi.fetchImage(this.uploadedImage);
+    const formData = new FormData();
+    formData.append('file', file);  // Gửi file trực tiếp
 
-    const fullFaceDescription1 = await faceapi.detectSingleFace(img1).withFaceLandmarks().withFaceDescriptor();
-    const fullFaceDescription2 = await faceapi.detectSingleFace(img2).withFaceLandmarks().withFaceDescriptor();
-
-    if (fullFaceDescription1 && fullFaceDescription2) {
-      const distance = faceapi.euclideanDistance(
-        fullFaceDescription1.descriptor, fullFaceDescription2.descriptor
-      );
-      const threshold = 0.4;
-      this.isMatched = distance < threshold;
-      console.log('Faces Matched:', this.isMatched, 'Distance:', distance);
-    } else {
-      console.error('One or both faces could not be detected.');
-      this.isMatched = false;
-    }
+    this.http.post(apiUrl, formData).subscribe({
+      next: (response: any) => {
+        if (response.FIRSTNAME && response.LASTNAME) {
+          this.isMatched = true;
+          this.userName = `${response.FIRSTNAME} ${response.LASTNAME}`;  // Hiển thị tên người dùng
+        } else {
+          this.isMatched = false;
+          this.userName = null;  // Không tìm thấy người dùng
+        }
+      },
+      error: (err) => {
+        console.error('Error uploading image', err);
+        this.isMatched = false;
+        this.userName = null;
+      },
+    });
   }
 }

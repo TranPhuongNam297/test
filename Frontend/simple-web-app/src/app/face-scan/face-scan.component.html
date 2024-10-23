@@ -1,36 +1,27 @@
-<h1 style="text-align: center;">Quét gương mặt</h1>
+<h1 style="text-align: center;">Tải ảnh lên để nhận diện</h1>
 <div style="text-align: center; margin: 20px;">
-    <!-- Video camera chỉ hiển thị nếu isCameraActive là true -->
-    <video #video *ngIf="isCameraActive" width="720" height="560" autoplay muted></video>
-    <canvas #canvas style="display: none;"></canvas>
-
-    <div style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
-        <div style="text-align: center; margin-right: 20px;">
-            <h3>Hình ảnh vừa quét:</h3>
-            <img 
-                *ngIf="capturedImage"
-                [src]="capturedImage" 
-                alt="Captured Image" 
-                width="300" 
-                style="border: 2px solid #ccc; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);">
-        </div>
-        <div style="text-align: center;">
-            <h3>Hình ảnh nhận diện:</h3>
-            <img 
-                *ngIf="uploadedImage"
-                [src]="uploadedImage" 
-                alt="Uploaded Image" 
-                width="300" 
-                style="border: 2px solid #ccc; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);">
-        </div>
-    </div>
-
+    <!-- Form tải ảnh -->
     <div>
-        <input type="file" (change)="uploadImage($event)" />
+        <input type="file" (change)="onFileSelected($event)" />
     </div>
 
-    <!-- Tự động hiển thị kết quả sau khi so sánh -->
+    <!-- Hiển thị ảnh đã tải lên -->
+    <div *ngIf="uploadedImage" style="margin-top: 20px;">
+        <h3>Ảnh đã tải lên:</h3>
+        <img 
+            [src]="uploadedImage" 
+            alt="Uploaded Image" 
+            width="300" 
+            style="border: 2px solid #ccc; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);">
+    </div>
+
+    <!-- Hiển thị kết quả nhận diện -->
     <p *ngIf="isMatched !== null" [ngStyle]="{'color': isMatched ? 'green' : 'red'}" style="font-weight: bold; font-size: 20px; margin-top: 20px;">
         {{ isMatched ? 'Gương mặt trùng khớp' : 'Gương mặt không trùng khớp!' }}
+    </p>
+
+    <!-- Hiển thị tên người dùng nếu tìm thấy -->
+    <p *ngIf="userName" style="font-size: 18px; color: blue; margin-top: 10px;">
+        Người dùng được nhận diện: {{ userName }}
     </p>
 </div>
