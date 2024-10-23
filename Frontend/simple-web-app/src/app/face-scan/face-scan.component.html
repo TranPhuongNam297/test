@@ -1,16 +1,16 @@
-<h1 style="text-align: center;">Tải ảnh lên để nhận diện</h1>
+<h1 style="text-align: center;">Quét gương mặt để nhận diện</h1>
 <div style="text-align: center; margin: 20px;">
-    <!-- Form tải ảnh -->
-    <div>
-        <input type="file" (change)="onFileSelected($event)" />
+    <!-- Video hiển thị camera khi đang quét -->
+    <div *ngIf="!uploadedImage">
+        <video #video autoplay muted playsinline width="400"></video>
     </div>
 
-    <!-- Hiển thị ảnh đã tải lên -->
+    <!-- Hiển thị ảnh đã chụp sau khi tắt camera -->
     <div *ngIf="uploadedImage" style="margin-top: 20px;">
-        <h3>Ảnh đã tải lên:</h3>
+        <h3>Ảnh đã chụp:</h3>
         <img 
             [src]="uploadedImage" 
-            alt="Uploaded Image" 
+            alt="Captured Image" 
             width="300" 
             style="border: 2px solid #ccc; border-radius: 5px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);">
     </div>
