@@ -27,8 +27,17 @@ export class FaceScanComponent implements OnInit, OnDestroy {
   constructor(private http: HttpClient) {}
 
   async ngOnInit() {
-    await this.loadFaceApiModels();
-    this.startCamera();
+    // Ensure the code runs only in the browser
+    if (this.isBrowser()) {
+      await this.loadFaceApiModels();
+      this.startCamera();
+    } else {
+      //console.error('This component can only run in a browser environment.');
+    }
+  }
+
+  isBrowser() {
+    return typeof window !== 'undefined' && typeof navigator !== 'undefined';
   }
 
   async loadFaceApiModels() {
@@ -45,14 +54,19 @@ export class FaceScanComponent implements OnInit, OnDestroy {
   }
 
   startCamera() {
-    navigator.mediaDevices
-      .getUserMedia({ video: {} })
-      .then((stream) => {
-        this.stream = stream;
-        this.videoElement.nativeElement.srcObject = stream;
-        this.startFaceDetection();
-      })
-      .catch((err) => console.error('Error accessing camera: ', err));
+    // Check if running in the browser before accessing the camera
+    if (this.isBrowser()) {
+      navigator.mediaDevices
+        .getUserMedia({ video: {} })
+        .then((stream) => {
+          this.stream = stream;
+          this.videoElement.nativeElement.srcObject = stream;
+          this.startFaceDetection();
+        })
+        .catch((err) => console.error('Error accessing camera: ', err));
+    } else {
+      console.error('Camera access is only available in the browser.');
+    }
   }
 
   startFaceDetection() {

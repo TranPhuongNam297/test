@@ -12,8 +12,8 @@ import { RouterModule } from '@angular/router';
   imports: [CommonModule, RouterModule]
 })
 export class CameraComponent implements OnInit {
-  @ViewChild('video', { static: true }) video!: any;
-  @ViewChild('canvas', { static: true }) canvas!: any;
+  @ViewChild('video', { static: true }) video!: HTMLVideoElement;
+  @ViewChild('canvas', { static: true }) canvas!: HTMLCanvasElement;
   public stream: MediaStream | null = null;
   imageCaptured: boolean = false;
   isFaceDetected: boolean = false;
@@ -21,22 +21,27 @@ export class CameraComponent implements OnInit {
   constructor(private router: Router) {}
 
   async ngOnInit() {
-    await this.loadFaceApiModels();
+    // Chỉ tải mô hình khi đang trong môi trường trình duyệt
+    if (typeof window !== 'undefined') {
+      await this.loadFaceApiModels();
+    } else {
+      //console.error('Môi trường không hỗ trợ face-api.js');
+    }
   }
 
   // Tải các mô hình của face-api.js
   async loadFaceApiModels() {
-    await faceapi.nets.tinyFaceDetector.loadFromUri('/assets/models');
-    console.log('Face API models loaded.');
+    try {
+      await faceapi.nets.tinyFaceDetector.loadFromUri('/assets/models');
+      console.log('Face API models loaded.');
+    } catch (error) {
+      console.error('Error loading face-api models: ', error);
+    }
   }
 
   // Hàm bật/tắt camera dựa trên trạng thái hiện tại
   toggleCamera() {
-    if (this.stream) {
-      this.stopCamera();
-    } else {
-      this.startCamera();
-    }
+    this.stream ? this.stopCamera() : this.startCamera();
   }
 
   // Bật camera
@@ -44,7 +49,9 @@ export class CameraComponent implements OnInit {
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream: MediaStream) => {
         this.stream = stream;
-        this.video.nativeElement.srcObject = stream;
+        this.video.srcObject = stream;
+        this.video.play(); // Chơi video
+        this.imageCaptured = false; // Reset imageCaptured khi bật camera
         this.detectFace(); // Bắt đầu phát hiện khuôn mặt khi camera hoạt động
       })
       .catch((err) => console.error("Error accessing camera: ", err));
@@ -60,48 +67,51 @@ export class CameraComponent implements OnInit {
 
   // Phát hiện khuôn mặt từ video
   detectFace() {
-    const video = this.video.nativeElement;
-    video.addEventListener('play', () => {
-      const canvas = this.canvas.nativeElement;
-      const displaySize = { width: video.videoWidth, height: video.videoHeight };
-      faceapi.matchDimensions(canvas, displaySize);
+    const video = this.video;
 
-      const interval = setInterval(async () => {
+    const detect = async () => {
+      if (!this.imageCaptured) { // Chỉ phát hiện khuôn mặt nếu chưa chụp ảnh
         const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions());
-        if (detections.length > 0 && !this.imageCaptured) {
+        if (detections.length > 0) {
           this.isFaceDetected = true;
-          clearInterval(interval); // Ngừng phát hiện khi có khuôn mặt
           this.captureImage(); // Tự động chụp hình
+        } else {
+          this.isFaceDetected = false; // Không phát hiện khuôn mặt
         }
-      }, 1000); // Kiểm tra mỗi giây
-    });
+      }
+      requestAnimationFrame(detect); // Gọi lại hàm detect
+    };
+
+    detect(); // Khởi động phát hiện
   }
 
   // Chụp hình và lưu vào máy
   captureImage() {
-    const videoWidth = this.video.nativeElement.videoWidth;
-    const videoHeight = this.video.nativeElement.videoHeight;
+    const videoWidth = this.video.videoWidth;
+    const videoHeight = this.video.videoHeight;
 
     // Đặt lại kích thước của canvas dựa trên videoWidth và videoHeight
-    this.canvas.nativeElement.width = videoWidth;
-    this.canvas.nativeElement.height = videoHeight;
+    this.canvas.width = videoWidth;
+    this.canvas.height = videoHeight;
 
-    const context = this.canvas.nativeElement.getContext('2d');
-    context.drawImage(this.video.nativeElement, 0, 0, videoWidth, videoHeight);
+    const context = this.canvas.getContext('2d');
+    if (context) {
+      context.drawImage(this.video, 0, 0, videoWidth, videoHeight);
 
-    // Chuyển canvas thành ảnh và tạo link để tải về
-    const imageData = this.canvas.nativeElement.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = imageData;
-    a.download = 'captured_image.png';
-    a.click();
+      // Chuyển canvas thành ảnh và tạo link để tải về
+      const imageData = this.canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = imageData;
+      a.download = 'captured_image.png';
+      a.click();
 
-    this.imageCaptured = true;
+      this.imageCaptured = true;
 
-    // Thêm thời gian chờ nhỏ để đảm bảo ảnh đã được lưu trước khi chuyển trang
-    setTimeout(() => {
-      this.goToRegister(); // Tự động chuyển trang sau khi chụp xong
-    }, 1000); // Thời gian chờ 1 giây để đảm bảo tải ảnh xong
+      // Thêm thời gian chờ nhỏ để đảm bảo ảnh đã được lưu trước khi chuyển trang
+      setTimeout(() => {
+        this.goToRegister(); // Tự động chuyển trang sau khi chụp xong
+      }, 1000); // Thời gian chờ 1 giây để đảm bảo tải ảnh xong
+    }
   }
 
   // Chuyển sang trang scan
