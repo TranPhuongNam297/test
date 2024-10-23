@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit, ElementRef } from '@angular/core';
+import { Component, ViewChild, OnInit, ElementRef, OnDestroy } from '@angular/core';
 import { Router } from '@angular/router';
 import * as faceapi from 'face-api.js';
 import { CommonModule } from '@angular/common';
@@ -13,9 +13,9 @@ import { HttpClientModule } from '@angular/common/http';
   styleUrls: ['./camera.component.css'],
   imports: [CommonModule, RouterModule, FormsModule, HttpClientModule],
 })
-export class CameraComponent implements OnInit {
-  @ViewChild('video', { static: true }) videoRef!: ElementRef<HTMLVideoElement>;
-  @ViewChild('canvas', { static: true }) canvasRef!: ElementRef<HTMLCanvasElement>;
+export class CameraComponent implements OnInit, OnDestroy {
+  @ViewChild('video', { static: false }) videoRef!: ElementRef<HTMLVideoElement>;
+  @ViewChild('canvas', { static: false }) canvasRef!: ElementRef<HTMLCanvasElement>;  
   public stream: MediaStream | null = null;
   public imageCaptured: boolean = false;
   public isFaceDetected: boolean = false;
@@ -28,7 +28,7 @@ export class CameraComponent implements OnInit {
   async ngOnInit() {
     if (this.isBrowser()) {
       await this.loadFaceApiModels();
-      this.startCamera();
+      // Camera will not start automatically anymore
     }
   }
 
@@ -57,16 +57,22 @@ export class CameraComponent implements OnInit {
     navigator.mediaDevices.getUserMedia({ video: true })
       .then((stream: MediaStream) => {
         this.stream = stream;
-        const videoElement = this.videoRef.nativeElement;
-        videoElement.srcObject = stream;
-        videoElement.play();
-        console.log("Camera started, video stream assigned.");
-        this.detectFace();
+        
+        if (this.videoRef && this.videoRef.nativeElement) {
+          const videoElement = this.videoRef.nativeElement;
+          videoElement.srcObject = stream;
+          videoElement.play();
+          console.log("Camera started, video stream assigned.");
+          this.detectFace();
+        } else {
+          console.error("Video element is not available.");
+        }
       })
       .catch((err) => {
         console.error("Error accessing camera: ", err);
       });
   }
+  
 
   stopCamera() {
     if (this.stream) {
@@ -95,13 +101,18 @@ export class CameraComponent implements OnInit {
   }
 
   captureImage(detections: any[]) {
+    if (!this.videoRef || !this.canvasRef) {
+      console.error("Video or Canvas element is not available.");
+      return;
+    }
+  
     const videoWidth = this.videoRef.nativeElement.videoWidth;
     const videoHeight = this.videoRef.nativeElement.videoHeight;
     const canvas = this.canvasRef.nativeElement;
-
+  
     canvas.width = videoWidth;
     canvas.height = videoHeight;
-
+  
     const context = canvas.getContext('2d');
     if (context) {
       context.drawImage(this.videoRef.nativeElement, 0, 0, videoWidth, videoHeight);
@@ -112,15 +123,16 @@ export class CameraComponent implements OnInit {
       clearInterval(this.scanInterval); // Stop face detection interval
     }
   }
+  
 
   submitData(firstName: string, lastName: string) {
     if (this.capturedImageData) {
       const data = {
-        image: this.capturedImageData,
+        imageBase64: this.capturedImageData,
         firstName: firstName,
         lastName: lastName,
       };
-
+  
       fetch('https://localhost:44320/api/CRUD', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -129,14 +141,19 @@ export class CameraComponent implements OnInit {
       .then(response => {
         if (response.ok) {
           console.log('Data submitted successfully');
+          alert('Bạn đã thêm dữ liệu thành công');
           this.router.navigate(['/scan']);
         } else {
           console.error('Error submitting data');
+          alert('Thêm dữ liệu không thành công');
         }
       })
-      .catch(err => console.error('Fetch error: ', err));
+      .catch(err => {
+        console.error('Fetch error: ', err);
+        alert('Thêm dữ liệu không thành công');
+      });
     }
-  }
+  }  
 
   stopFaceDetection() {
     if (this.scanInterval) {

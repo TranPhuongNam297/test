@@ -1,31 +1,34 @@
-<!-- camera.component.html -->
 <div class="camera-container">
-  <video #video autoplay></video>
-  <canvas #canvas style="display: none;"></canvas>
-
-  <div class="controls">
-    <button (click)="toggleCamera()">
-      {{ stream ? 'Stop Camera' : 'Start Camera' }}
-    </button>
-    <div *ngIf="isFaceDetected" class="face-detected">
-      <p>Face Detected!</p>
-    </div>
-    <div *ngIf="imageCaptured" class="image-preview">
-      <h3>Captured Image:</h3>
-      <img [src]="capturedImageData" alt="Captured Image" />
-    </div>
+  <div *ngIf="!imageCaptured">
+    <video #video width="500" height="300" autoplay></video>
+    <canvas #canvas style="display: none;" width="500" height="300"></canvas>
   </div>
 
+  <div class="controls">
+    <!-- Chỉ hiển thị nút bật/tắt camera khi chưa chụp ảnh -->
+    <button *ngIf="!imageCaptured" (click)="toggleCamera()">
+      {{ stream ? 'Stop Camera' : 'Start Camera' }}
+    </button>
+    
+    <div *ngIf="isFaceDetected && !imageCaptured" class="face-detected">
+      <p>Đang quét gương mặt</p>
+    </div>
+    <div *ngIf="imageCaptured" class="image-preview">
+      <h3>Quét gương mặt thành công!</h3>
+      <img [src]="capturedImageData" alt="Captured Image" width="500" height="350" />
+    </div>
+  </div>  
+
   <div *ngIf="imageCaptured" class="form-container">
-    <h3>Submit Your Data</h3>
+    <h3>Điền thêm thông tin</h3>
     <form (ngSubmit)="submitData(firstName.value, lastName.value)">
-      <label for="firstName">First Name:</label>
+      <label for="firstName">Họ: </label>
       <input type="text" id="firstName" #firstName required />
 
-      <label for="lastName">Last Name:</label>
+      <label for="lastName">Tên: </label>
       <input type="text" id="lastName" #lastName required />
 
-      <button type="submit">Submit</button>
+      <button type="submit">Gửi</button>
     </form>
   </div>
 </div>
